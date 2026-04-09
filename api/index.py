@@ -1,12 +1,23 @@
+import os
 import requests
 from bs4 import BeautifulSoup
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 
 app = FastAPI(title="Accessibility Auditor")
+
+# Serve frontend locally (Vercel handles this via vercel.json in prod)
+_public = os.path.join(os.path.dirname(__file__), "..", "public")
+if os.path.isdir(_public):
+    app.mount("/static", StaticFiles(directory=_public), name="static")
+
+@app.get("/")
+def root():
+    return FileResponse(os.path.join(_public, "index.html"))
 
 app.add_middleware(
     CORSMiddleware,
