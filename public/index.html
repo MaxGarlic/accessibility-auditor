@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Accessibility Auditor</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: 'Inter', system-ui, sans-serif; }
+    .fade-in { animation: fadeIn 0.3s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    .spin { animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    pre { white-space: pre-wrap; word-break: break-all; }
+    .issue-card:hover { transform: translateY(-1px); transition: transform 0.15s ease; }
+  </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+
+  <!-- Header -->
+  <header class="bg-white border-b border-gray-200 px-6 py-4">
+    <div class="max-w-4xl mx-auto flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center">
+          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+          </svg>
+        </div>
+        <div>
+          <h1 class="font-bold text-gray-900 text-lg leading-none">Accessibility Auditor</h1>
+          <p class="text-xs text-gray-500 mt-0.5">WCAG 2.1 compliance scanner</p>
+        </div>
+      </div>
+      <span class="text-xs bg-indigo-50 text-indigo-700 font-medium px-2.5 py-1 rounded-full">by Garlic Team</span>
+    </div>
+  </header>
+
+  <!-- Main -->
+  <main id="main-content" class="max-w-4xl mx-auto px-6 py-10">
+
+    <!-- Scan Form -->
+    <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-6 mb-8">
+      <h2 class="text-base font-semibold text-gray-900 mb-4">Scan a Website</h2>
+      <form id="scanForm" class="space-y-4">
+        <div>
+          <label for="urlInput" class="block text-sm font-medium text-gray-700 mb-1.5">URL to scan</label>
+          <div class="flex gap-3">
+            <input
+              id="urlInput"
+              type="url"
+              placeholder="https://example.com"
+              class="flex-1 border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              required
+            />
+            <button
+              type="submit"
+              id="scanBtn"
+              class="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-6 py-2.5 rounded-lg transition-colors flex items-center gap-2"
+            >
+              <span id="btnText">Scan</span>
+              <svg id="btnSpinner" class="w-4 h-4 spin hidden" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- WP credentials (collapsible) -->
+        <div>
+          <button type="button" id="toggleWP" class="text-sm text-indigo-600 hover:text-indigo-800 font-medium flex items-center gap-1">
+            <svg id="wpChevron" class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+            </svg>
+            WordPress auto-fix (optional)
+          </button>
+          <div id="wpFields" class="hidden mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label for="wpUrl" class="block text-xs font-medium text-gray-600 mb-1">WP Site URL</label>
+              <input id="wpUrl" type="url" placeholder="https://mysite.com" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"/>
+            </div>
+            <div>
+              <label for="wpUser" class="block text-xs font-medium text-gray-600 mb-1">Admin Username</label>
+              <input id="wpUser" type="text" placeholder="admin" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"/>
+            </div>
+            <div>
+              <label for="wpPass" class="block text-xs font-medium text-gray-600 mb-1">Application Password</label>
+              <input id="wpPass" type="password" placeholder="xxxx xxxx xxxx" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"/>
+            </div>
+          </div>
+        </div>
+      </form>
+    </div>
+
+    <!-- Error -->
+    <div id="errorBox" class="hidden bg-red-50 border border-red-200 rounded-xl p-4 mb-8 text-sm text-red-700 fade-in"></div>
+
+    <!-- Results -->
+    <div id="results" class="hidden fade-in space-y-6">
+
+      <!-- Summary row -->
+      <div id="summary" class="grid grid-cols-2 sm:grid-cols-5 gap-3"></div>
+
+      <!-- WP Fix button -->
+      <div id="wpFixRow" class="hidden">
+        <button id="wpFixBtn" class="bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium px-5 py-2.5 rounded-lg transition-colors flex items-center gap-2">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+          </svg>
+          Apply WordPress Fixes
+        </button>
+      </div>
+
+      <!-- WP fix results -->
+      <div id="wpResults" class="hidden bg-white border border-gray-200 rounded-xl p-5 space-y-4 fade-in">
+        <h3 class="font-semibold text-gray-900">WordPress Fix Results</h3>
+        <div id="wpResultsContent"></div>
+      </div>
+
+      <!-- Issue sections by priority -->
+      <div id="issueSections"></div>
+
+      <!-- Export button -->
+      <div class="flex gap-3">
+        <button id="exportBtn" class="border border-gray-300 hover:bg-gray-50 text-gray-700 text-sm font-medium px-5 py-2.5 rounded-lg transition-colors flex items-center gap-2">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+          </svg>
+          Export Report
+        </button>
+      </div>
+    </div>
+
+  </main>
+
+<script>
+  // ── State ──────────────────────────────────────────────────────────────────
+  let lastScanData = null;
+
+  const PRIORITY_CONFIG = {
+    P0: { label: "P0 Critical", color: "red",   bg: "bg-red-50",    border: "border-red-200",    badge: "bg-red-100 text-red-700",    dot: "bg-red-500" },
+    P1: { label: "P1 High",     color: "orange", bg: "bg-orange-50", border: "border-orange-200", badge: "bg-orange-100 text-orange-700", dot: "bg-orange-500" },
+    P2: { label: "P2 Medium",   color: "yellow", bg: "bg-yellow-50", border: "border-yellow-200", badge: "bg-yellow-100 text-yellow-700", dot: "bg-yellow-500" },
+    P3: { label: "P3 Low",      color: "green",  bg: "bg-green-50",  border: "border-green-200",  badge: "bg-green-100 text-green-700",  dot: "bg-green-500" },
+  };
+
+  // ── WP toggle ─────────────────────────────────────────────────────────────
+  document.getElementById("toggleWP").addEventListener("click", () => {
+    const fields = document.getElementById("wpFields");
+    const chevron = document.getElementById("wpChevron");
+    fields.classList.toggle("hidden");
+    chevron.style.transform = fields.classList.contains("hidden") ? "" : "rotate(90deg)";
+  });
+
+  // ── Scan form submit ──────────────────────────────────────────────────────
+  document.getElementById("scanForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    await runScan();
+  });
+
+  async function runScan() {
+    const url = document.getElementById("urlInput").value.trim();
+    setLoading(true);
+    clearError();
+    hideResults();
+
+    try {
+      const resp = await fetch("/api/scan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url }),
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.detail || "Scan failed");
+      lastScanData = data;
+      renderResults(data);
+    } catch (err) {
+      showError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // ── WP Fix ────────────────────────────────────────────────────────────────
+  document.getElementById("wpFixBtn").addEventListener("click", async () => {
+    const wp_url  = document.getElementById("wpUrl").value.trim();
+    const wp_user = document.getElementById("wpUser").value.trim();
+    const wp_pass = document.getElementById("wpPass").value.trim();
+    if (!wp_url || !wp_user || !wp_pass) {
+      showError("Fill in WP Site URL, Username, and Application Password first.");
+      return;
+    }
+    try {
+      const resp = await fetch("/api/fix/wp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          scan_url: document.getElementById("urlInput").value.trim(),
+          wp_url, wp_user, wp_pass,
+          issues: lastScanData?.issues || [],
+        }),
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.detail || "WP fix failed");
+      renderWPResults(data);
+    } catch (err) {
+      showError(err.message);
+    }
+  });
+
+  // ── Render results ────────────────────────────────────────────────────────
+  function renderResults(data) {
+    const resultsEl = document.getElementById("results");
+    resultsEl.classList.remove("hidden");
+
+    renderSummary(data);
+    renderIssues(data.issues);
+
+    // Show WP fix button only if credentials are visible
+    const wpUrl = document.getElementById("wpUrl").value.trim();
+    if (wpUrl) {
+      document.getElementById("wpFixRow").classList.remove("hidden");
+    }
+
+    window.scrollTo({ top: document.getElementById("results").offsetTop - 20, behavior: "smooth" });
+  }
+
+  function renderSummary(data) {
+    const el = document.getElementById("summary");
+    const totalColor = data.total === 0 ? "text-green-600" : data.counts.P0 > 0 ? "text-red-600" : "text-orange-600";
+    el.innerHTML = `
+      <div class="bg-white border border-gray-200 rounded-xl p-4 col-span-2 sm:col-span-1">
+        <div class="text-xs font-medium text-gray-500 mb-1">Total Issues</div>
+        <div class="text-3xl font-bold ${totalColor}">${data.total}</div>
+        <div class="text-xs text-gray-400 mt-1 truncate">${data.page_title || data.url}</div>
+      </div>
+      ${["P0","P1","P2","P3"].map(p => {
+        const c = PRIORITY_CONFIG[p];
+        const count = data.counts[p];
+        return `
+          <div class="bg-white border ${count > 0 ? c.border : 'border-gray-200'} rounded-xl p-4">
+            <div class="text-xs font-medium text-gray-500 mb-1">${c.label}</div>
+            <div class="text-2xl font-bold ${count > 0 ? `text-${c.color}-600` : 'text-gray-300'}">${count}</div>
+          </div>
+        `;
+      }).join("")}
+    `;
+  }
+
+  function renderIssues(issues) {
+    const el = document.getElementById("issueSections");
+    if (issues.length === 0) {
+      el.innerHTML = `
+        <div class="bg-green-50 border border-green-200 rounded-xl p-8 text-center fade-in">
+          <div class="text-4xl mb-3">✅</div>
+          <div class="text-green-800 font-semibold text-lg">No issues found!</div>
+          <div class="text-green-600 text-sm mt-1">This page passed all automated accessibility checks.</div>
+        </div>
+      `;
+      return;
+    }
+
+    const grouped = { P0: [], P1: [], P2: [], P3: [] };
+    issues.forEach(i => grouped[i.priority].push(i));
+
+    el.innerHTML = ["P0","P1","P2","P3"].map(p => {
+      if (!grouped[p].length) return "";
+      const c = PRIORITY_CONFIG[p];
+      return `
+        <div class="${c.bg} ${c.border} border rounded-xl p-5 fade-in">
+          <div class="flex items-center gap-2 mb-4">
+            <span class="w-2.5 h-2.5 rounded-full ${c.dot}"></span>
+            <h3 class="font-semibold text-gray-900">${c.label} <span class="text-gray-500 font-normal">(${grouped[p].length})</span></h3>
+          </div>
+          <div class="space-y-3">
+            ${grouped[p].map(iss => issueCard(iss, c)).join("")}
+          </div>
+        </div>
+      `;
+    }).join("");
+  }
+
+  function issueCard(iss, c) {
+    const typeLabel = iss.type.replace(/_/g, " ");
+    return `
+      <div class="bg-white rounded-lg border ${c.border} p-4 issue-card">
+        <div class="flex items-start justify-between gap-3 mb-2">
+          <div class="font-medium text-gray-900 text-sm">${esc(iss.message)}</div>
+          <span class="shrink-0 text-xs font-medium px-2 py-0.5 rounded-full ${c.badge}">${typeLabel}</span>
+        </div>
+        <div class="text-sm text-gray-600 mb-2">
+          <span class="font-medium text-gray-700">Fix:</span> ${esc(iss.fix)}
+        </div>
+        ${iss.element ? `<pre class="text-xs bg-gray-50 border border-gray-200 rounded p-2 text-gray-500 overflow-auto">${esc(iss.element)}</pre>` : ""}
+      </div>
+    `;
+  }
+
+  function renderWPResults(data) {
+    const el = document.getElementById("wpResults");
+    const content = document.getElementById("wpResultsContent");
+    el.classList.remove("hidden");
+
+    let html = "";
+
+    if (data.fixed.length) {
+      html += `<div class="mb-4">
+        <div class="text-sm font-semibold text-emerald-700 mb-2">✅ Applied (${data.fixed.length})</div>
+        ${data.fixed.map(f => `<div class="text-sm text-gray-700 py-1 border-b border-gray-100">${esc(f.message)}</div>`).join("")}
+      </div>`;
+    }
+
+    if (data.css_snippet) {
+      html += `<div class="mb-4">
+        <div class="text-sm font-semibold text-gray-800 mb-2">CSS to add → Appearance > Customize > Additional CSS</div>
+        <pre class="text-xs bg-gray-900 text-green-400 rounded-lg p-4 overflow-auto">${esc(data.css_snippet)}</pre>
+        <button onclick="copyCSS()" class="mt-2 text-xs border border-gray-300 px-3 py-1.5 rounded hover:bg-gray-50">Copy CSS</button>
+      </div>`;
+    }
+
+    if (data.recommended_plugins.length) {
+      html += `<div class="mb-4">
+        <div class="text-sm font-semibold text-gray-800 mb-2">Recommended Plugins</div>
+        ${data.recommended_plugins.map(p => `
+          <div class="flex items-start justify-between gap-3 py-2 border-b border-gray-100">
+            <div>
+              <div class="text-sm font-medium text-gray-900">${esc(p.name)}</div>
+              <div class="text-xs text-gray-500">${esc(p.reason)}</div>
+            </div>
+            <a href="${esc(p.install_url)}" target="_blank" rel="noopener" class="shrink-0 text-xs bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded transition-colors">Install</a>
+          </div>
+        `).join("")}
+      </div>`;
+    }
+
+    if (data.manual_required.length) {
+      html += `<div>
+        <div class="text-sm font-semibold text-gray-800 mb-2">Manual Fixes Required (${data.manual_required.length})</div>
+        ${data.manual_required.map(f => `
+          <div class="py-2 border-b border-gray-100">
+            <div class="text-sm text-gray-700">${esc(f.message)}</div>
+            <div class="text-xs text-gray-500 mt-0.5">${esc(f.action)}</div>
+          </div>
+        `).join("")}
+      </div>`;
+    }
+
+    content.innerHTML = html;
+  }
+
+  // ── Export ────────────────────────────────────────────────────────────────
+  document.getElementById("exportBtn").addEventListener("click", () => {
+    if (!lastScanData) return;
+    const d = lastScanData;
+    const lines = [
+      `Accessibility Audit Report`,
+      `URL: ${d.url}`,
+      `Page: ${d.page_title}`,
+      `Date: ${new Date().toLocaleDateString()}`,
+      `Total Issues: ${d.total}`,
+      `P0: ${d.counts.P0} | P1: ${d.counts.P1} | P2: ${d.counts.P2} | P3: ${d.counts.P3}`,
+      ``,
+      ...d.issues.map(i => [
+        `[${i.priority}] ${i.type.replace(/_/g," ")}`,
+        `  Issue: ${i.message}`,
+        `  Fix:   ${i.fix}`,
+        i.element ? `  Element: ${i.element}` : "",
+        ``
+      ].filter(Boolean).join("\n"))
+    ];
+    const blob = new Blob([lines.join("\n")], { type: "text/plain" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `a11y-audit-${new Date().toISOString().slice(0,10)}.txt`;
+    a.click();
+  });
+
+  // ── Helpers ───────────────────────────────────────────────────────────────
+  function copyCSS() {
+    const pre = document.querySelector("#wpResultsContent pre");
+    if (pre) navigator.clipboard.writeText(pre.textContent);
+  }
+
+  function setLoading(on) {
+    document.getElementById("btnText").textContent = on ? "Scanning..." : "Scan";
+    document.getElementById("btnSpinner").classList.toggle("hidden", !on);
+    document.getElementById("scanBtn").disabled = on;
+  }
+
+  function showError(msg) {
+    const el = document.getElementById("errorBox");
+    el.textContent = msg;
+    el.classList.remove("hidden");
+  }
+
+  function clearError() {
+    document.getElementById("errorBox").classList.add("hidden");
+  }
+
+  function hideResults() {
+    document.getElementById("results").classList.add("hidden");
+    document.getElementById("wpResults").classList.add("hidden");
+    document.getElementById("wpFixRow").classList.add("hidden");
+  }
+
+  function esc(str) {
+    return String(str ?? "")
+      .replace(/&/g,"&amp;")
+      .replace(/</g,"&lt;")
+      .replace(/>/g,"&gt;")
+      .replace(/"/g,"&quot;");
+  }
+</script>
+</body>
+</html>
